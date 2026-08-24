@@ -1,14 +1,17 @@
-@"
-node_modules/
-.env
-.env.*
-!.env.example
-dist/
-build/
-*.log
-bad-body.json
-resend-body.json
-signup-body.json
-frontend/.env
-frontend/src/services/.env
-"@ | Set-Content -Path ".gitignore" -Encoding UTF8
+[System.IO.File]::WriteAllLines(
+    "$PWD\.gitignore",
+    @(
+        "node_modules/"
+        ".env"
+        ".env.*"
+        "!.env.example"
+        "dist/"
+        "build/"
+        "*.log"
+        "bad-body.json"
+        "resend-body.json"
+        "signup-body.json"
+        "frontend/.env"
+        "frontend/src/services/.env"
+    )
+)
