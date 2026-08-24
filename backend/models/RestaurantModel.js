@@ -28,17 +28,38 @@ const restaurantSchema = new mongoose.Schema(
     address: {
       type: String,
       required: true,
+      trim: true,
     },
 
     city: {
       type: String,
       required: true,
+      trim: true,
     },
 
     state: {
       type: String,
       required: true,
+      trim: true,
     },
+
+    // ================= RESTAURANT LOCATION =================
+
+    latitude: {
+      type: Number,
+      min: -90,
+      max: 90,
+      default: null,
+    },
+
+    longitude: {
+      type: Number,
+      min: -180,
+      max: 180,
+      default: null,
+    },
+
+    // ================= STATUS =================
 
     status: {
       type: String,
@@ -56,4 +77,7 @@ const restaurantSchema = new mongoose.Schema(
   }
 );
 
-module.exports = mongoose.model("Restaurant", restaurantSchema);
+module.exports = mongoose.model(
+  "Restaurant",
+  restaurantSchema
+);

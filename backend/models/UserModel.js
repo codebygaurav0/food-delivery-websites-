@@ -2,6 +2,8 @@ const mongoose = require("mongoose");
 
 const userSchema = new mongoose.Schema(
   {
+    // ================= BASIC USER INFO =================
+
     name: {
       type: String,
       required: true,
@@ -24,23 +26,28 @@ const userSchema = new mongoose.Schema(
     phone: {
       type: String,
       required: true,
+      trim: true,
     },
+
+    // ================= ROLE =================
 
     role: {
       type: String,
       enum: [
         "customer",
         "restaurantOwner",
-        "deliveryBoy",
+        "rider",
         "admin",
         "superAdmin",
       ],
       default: "customer",
     },
 
+    // ================= ACCOUNT STATUS =================
+
     status: {
       type: String,
-      enum: ["active", "blocked"],
+      enum: ["active", "blocked", "pending", "rejected"],
       default: "active",
     },
 
@@ -57,6 +64,64 @@ const userSchema = new mongoose.Schema(
     },
 
     otpExpire: {
+      type: Date,
+      default: null,
+    },
+
+    // ================= RIDER DETAILS =================
+    // Rider ke liye use honge.
+    // Customer/Restaurant Owner ke liye optional rahenge.
+
+    vehicleType: {
+      type: String,
+      enum: ["Bike", "Scooter", "Car", "Other"],
+      default: null,
+    },
+
+    vehicleNumber: {
+      type: String,
+      trim: true,
+      uppercase: true,
+      default: null,
+    },
+
+    drivingLicenseNumber: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+
+    riderCity: {
+      type: String,
+      trim: true,
+      default: null,
+    },
+
+    // ================= RIDER REQUEST =================
+
+    riderRequestStatus: {
+      type: String,
+      enum: [
+        "NotRequested",
+        "Pending",
+        "Approved",
+        "Rejected",
+      ],
+      default: "NotRequested",
+    },
+
+    riderRejectionReason: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+
+    riderApprovedAt: {
+      type: Date,
+      default: null,
+    },
+
+    riderRejectedAt: {
       type: Date,
       default: null,
     },

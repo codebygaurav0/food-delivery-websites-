@@ -24,6 +24,12 @@ const signup = async (req, res) => {
       address,
       city,
       state,
+
+      // Rider details
+      vehicleType,
+      vehicleNumber,
+      drivingLicenseNumber,
+      riderCity,
     } = req.body;
 
     console.log("========== SIGNUP ==========");
@@ -49,9 +55,11 @@ const signup = async (req, res) => {
     const selectedRole = role || "customer";
 
     if (
-      !["customer", "restaurantOwner"].includes(
-        selectedRole
-      )
+      ![
+        "customer",
+        "restaurantOwner",
+        "rider",
+      ].includes(selectedRole)
     ) {
       return res.status(400).json({
         success: false,
@@ -81,6 +89,25 @@ const signup = async (req, res) => {
     }
 
     // =================================================
+    // RIDER VALIDATION
+    // =================================================
+
+    if (selectedRole === "rider") {
+      if (
+        !vehicleType?.trim() ||
+        !vehicleNumber?.trim() ||
+        !drivingLicenseNumber?.trim() ||
+        !riderCity?.trim()
+      ) {
+        return res.status(400).json({
+          success: false,
+          message:
+            "Vehicle type, vehicle number, driving license number and city are required for rider registration",
+        });
+      }
+    }
+
+    // =================================================
     // CHECK EXISTING USER
     // =================================================
 
@@ -90,7 +117,6 @@ const signup = async (req, res) => {
       email: cleanEmail,
     });
 
-    // Already verified -> genuine duplicate (conflict)
     if (
       existingUser &&
       existingUser.isVerified
@@ -100,9 +126,6 @@ const signup = async (req, res) => {
         message: "Email already registered",
       });
     }
-
-    // NOTE: an existing UNVERIFIED account falls through.
-    // We reuse that SAME document below (no duplicates).
 
     // =================================================
     // HASH PASSWORD
@@ -126,20 +149,58 @@ const signup = async (req, res) => {
     );
 
     // =================================================
-    // CREATE OR UPDATE (UNVERIFIED) USER
+    // CREATE / UPDATE USER
     // =================================================
 
     let user = null;
-    let isNewUser = false;
 
     if (existingUser) {
-      // Re-use the SAME document -> no duplicate users
       user = existingUser;
 
+      user.name = name.trim();
       user.password = hashedPassword;
       user.phone = phone.trim();
+      user.role = selectedRole;
+
       user.otp = otp;
       user.otpExpire = otpExpire;
+      user.isVerified = false;
+
+      // ---------------- RIDER ----------------
+      if (selectedRole === "rider") {
+        user.status = "pending";
+        user.riderRequestStatus = "Pending";
+        user.riderRejectionReason = "";
+        user.riderApprovedAt = null;
+        user.riderRejectedAt = null;
+
+        user.vehicleType = vehicleType.trim();
+
+        user.vehicleNumber =
+          vehicleNumber.trim().toUpperCase();
+
+        user.drivingLicenseNumber =
+          drivingLicenseNumber.trim();
+
+        user.riderCity = riderCity.trim();
+      }
+
+      // ---------------- CUSTOMER ----------------
+      if (selectedRole === "customer") {
+        user.status = "active";
+      }
+
+      // ---------------- RESTAURANT OWNER ----------------
+      if (
+        selectedRole === "restaurantOwner"
+      ) {
+        if (
+          user.status === "blocked" ||
+          user.status === "rejected"
+        ) {
+          user.status = "active";
+        }
+      }
 
       await user.save();
 
@@ -148,23 +209,58 @@ const signup = async (req, res) => {
         user._id
       );
     } else {
-      isNewUser = true;
-
-      user = await User.create({
+      const userData = {
         name: name.trim(),
         email: cleanEmail,
         password: hashedPassword,
         phone: phone.trim(),
         role: selectedRole,
 
-        // OTP
-        otp: otp,
-        otpExpire: otpExpire,
+        otp,
+        otpExpire,
         isVerified: false,
-      });
 
-      console.log("NEW USER CREATED:", user._id);
-      console.log("USER ROLE:", user.role);
+        status:
+          selectedRole === "rider"
+            ? "pending"
+            : "active",
+      };
+
+      // Rider fields
+      if (selectedRole === "rider") {
+        userData.vehicleType =
+          vehicleType.trim();
+
+        userData.vehicleNumber =
+          vehicleNumber
+            .trim()
+            .toUpperCase();
+
+        userData.drivingLicenseNumber =
+          drivingLicenseNumber.trim();
+
+        userData.riderCity =
+          riderCity.trim();
+
+        userData.riderRequestStatus =
+          "Pending";
+
+        userData.riderRejectionReason = "";
+        userData.riderApprovedAt = null;
+        userData.riderRejectedAt = null;
+      }
+
+      user = await User.create(userData);
+
+      console.log(
+        "NEW USER CREATED:",
+        user._id
+      );
+
+      console.log(
+        "USER ROLE:",
+        user.role
+      );
     }
 
     // =================================================
@@ -174,147 +270,184 @@ const signup = async (req, res) => {
     let restaurant = null;
 
     if (
-      isNewUser &&
       selectedRole === "restaurantOwner"
     ) {
-      restaurant = await Restaurant.create({
-        owner: user._id,
+      restaurant =
+        await Restaurant.findOne({
+          owner: user._id,
+          status: "Pending",
+        });
 
-        restaurantName:
-          restaurantName.trim(),
+      if (!restaurant) {
+        restaurant =
+          await Restaurant.create({
+            owner: user._id,
 
-        email:
-          restaurantEmail
-            .toLowerCase()
-            .trim(),
+            restaurantName:
+              restaurantName.trim(),
 
-        phone:
-          restaurantPhone.trim(),
+            email:
+              restaurantEmail
+                .toLowerCase()
+                .trim(),
 
-        address:
-          address.trim(),
+            phone:
+              restaurantPhone.trim(),
 
-        city:
-          city.trim(),
+            address:
+              address.trim(),
 
-        state:
-          state.trim(),
+            city:
+              city.trim(),
 
-        status: "Pending",
-      });
+            state:
+              state.trim(),
 
-      console.log(
-        "RESTAURANT REQUEST CREATED:",
-        restaurant._id
-      );
+            status: "Pending",
+          });
 
-      console.log(
-        "RESTAURANT STATUS:",
-        restaurant.status
-      );
+        console.log(
+          "RESTAURANT REQUEST CREATED:",
+          restaurant._id
+        );
+      }
     }
 
     // =================================================
     // SEND OTP EMAIL
     // =================================================
 
+    let emailSent = false;
+
     try {
-      await sendEmail({
+      const emailResult = await sendEmail({
         to: user.email,
 
         subject:
           "Foodie - Email Verification OTP",
 
-      html: `
-        <div style="
-          font-family: Arial, sans-serif;
-          max-width: 600px;
-          margin: auto;
-          padding: 30px;
-          background: #ffffff;
-        ">
-
-          <h2 style="
-            color: #f97316;
-            margin-bottom: 20px;
-          ">
-            🍔 Foodie
-          </h2>
-
-          <h3>
-            Verify Your Email
-          </h3>
-
-          <p>
-            Hello <strong>${user.name}</strong>,
-          </p>
-
-          <p>
-            Thank you for creating your Foodie account.
-            Please use the OTP below to verify your email.
-          </p>
-
+        html: `
           <div style="
-            background: #fff7ed;
-            border: 1px solid #fed7aa;
-            padding: 25px;
-            text-align: center;
-            border-radius: 12px;
-            margin: 25px 0;
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: auto;
+            padding: 30px;
+            background: #ffffff;
           ">
+
+            <h2 style="
+              color: #f97316;
+              margin-bottom: 20px;
+            ">
+              🍔 Foodie
+            </h2>
+
+            <h3>
+              Verify Your Email
+            </h3>
+
+            <p>
+              Hello <strong>${user.name}</strong>,
+            </p>
+
+            <p>
+              Thank you for registering with Foodie.
+              Please use the OTP below to verify your email.
+            </p>
 
             <div style="
-              font-size: 36px;
-              font-weight: bold;
-              letter-spacing: 10px;
-              color: #f97316;
+              background: #fff7ed;
+              border: 1px solid #fed7aa;
+              padding: 25px;
+              text-align: center;
+              border-radius: 12px;
+              margin: 25px 0;
             ">
-              ${otp}
+
+              <div style="
+                font-size: 36px;
+                font-weight: bold;
+                letter-spacing: 10px;
+                color: #f97316;
+              ">
+                ${otp}
+              </div>
+
             </div>
 
+            <p>
+              This OTP is valid for
+              <strong>10 minutes</strong>.
+            </p>
+
+            <p>
+              Please do not share this OTP with anyone.
+            </p>
+
+            <hr />
+
+            <p style="
+              color: #999;
+              font-size: 12px;
+            ">
+              © 2026 Foodie. All rights reserved.
+            </p>
+
           </div>
+        `,
 
-          <p>
-            This OTP is valid for
-            <strong>10 minutes</strong>.
-          </p>
-
-          <p>
-            Please do not share this OTP with anyone.
-          </p>
-
-          <hr />
-
-          <p style="
-            color: #999;
-            font-size: 12px;
-          ">
-            © 2026 Foodie. All rights reserved.
-          </p>
-
-        </div>
-      `,
+        otp,
       });
+
+      emailSent = emailResult?.sent === true;
+
+      if (emailSent) {
+        console.log(
+          "✅ OTP EMAIL SENT TO:",
+          user.email
+        );
+      }
     } catch (emailError) {
-      // Brevo / network failure -> clean 502,
-      // account stays unverified so signup can be retried
       console.error(
-        "OTP EMAIL FAILED:",
-        emailError.response?.status ||
+        "❌ OTP EMAIL FAILED:",
+        emailError.response?.data ||
           emailError.message
       );
-
-      return res.status(502).json({
-        success: false,
-        message:
-          "Account created but the OTP email could not be sent. Please try again or use Resend OTP.",
-      });
     }
 
-    console.log(
-      "OTP EMAIL SENT TO:",
-      user.email
-    );
+    // =================================================
+    // DEVELOPMENT OTP FALLBACK
+    // =================================================
+
+    if (!emailSent) {
+      console.log("================================");
+      console.log("🚧 DEVELOPMENT OTP");
+      console.log("Email:", user.email);
+      console.log("OTP:", otp);
+      console.log("================================");
+    }
+
+    // =================================================
+    // RESPONSE MESSAGE
+    // =================================================
+
+    let responseMessage = emailSent
+      ? "Account created successfully. OTP has been sent to your email."
+      : "Account created successfully. Development OTP has been generated. Check backend terminal.";
+
+    if (
+      selectedRole === "restaurantOwner"
+    ) {
+      responseMessage = emailSent
+        ? "Account created successfully. OTP has been sent to your email. Restaurant request is pending Super Admin approval."
+        : "Account created successfully. Development OTP has been generated. Restaurant request is pending Super Admin approval.";
+    }
+
+    if (selectedRole === "rider") {
+      responseMessage = emailSent
+        ? "Rider account created successfully. OTP has been sent to your email. Your rider request is pending Super Admin approval."
+        : "Rider account created successfully. Development OTP has been generated. Your rider request is pending Super Admin approval.";
+    }
 
     // =================================================
     // RESPONSE
@@ -323,10 +456,7 @@ const signup = async (req, res) => {
     return res.status(201).json({
       success: true,
 
-      message:
-        selectedRole === "restaurantOwner"
-          ? "Account created successfully. OTP has been sent to your email. Restaurant request is pending Super Admin approval."
-          : "Account created successfully. OTP has been sent to your email.",
+      message: responseMessage,
 
       user: {
         id: user._id,
@@ -334,19 +464,20 @@ const signup = async (req, res) => {
         email: user.email,
         phone: user.phone,
         role: user.role,
+        status: user.status,
+        riderRequestStatus:
+          user.riderRequestStatus,
       },
 
       restaurant,
     });
-
   } catch (error) {
     console.error(
       "========== SIGNUP ERROR =========="
     );
 
-    console.error(error.message);
+    console.error(error);
 
-    // Race-condition duplicate on unique email index
     if (error.code === 11000) {
       return res.status(409).json({
         success: false,
@@ -354,12 +485,15 @@ const signup = async (req, res) => {
       });
     }
 
-    // Mongoose validation -> client error
-    if (error.name === "ValidationError") {
+    if (
+      error.name === "ValidationError"
+    ) {
       return res.status(400).json({
         success: false,
         message:
-          Object.values(error.errors)[0].message,
+          Object.values(
+            error.errors
+          )[0].message,
       });
     }
 
@@ -370,14 +504,16 @@ const signup = async (req, res) => {
   }
 };
 
-
 // =====================================================
 // LOGIN
 // =====================================================
 
 const login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const {
+      email,
+      password,
+    } = req.body;
 
     if (!email || !password) {
       return res.status(400).json({
@@ -398,10 +534,6 @@ const login = async (req, res) => {
       });
     }
 
-    // =================================================
-    // EMAIL VERIFICATION CHECK
-    // =================================================
-
     if (!user.isVerified) {
       return res.status(403).json({
         success: false,
@@ -412,36 +544,54 @@ const login = async (req, res) => {
       });
     }
 
-    // =================================================
-    // BLOCKED CHECK
-    // =================================================
-
     if (user.status === "blocked") {
       return res.status(403).json({
         success: false,
-        message: "Your account is blocked",
+        message:
+          "Your account is blocked",
       });
     }
 
     // =================================================
-    // PASSWORD CHECK
+    // RIDER APPROVAL
     // =================================================
 
-    const isMatch = await bcrypt.compare(
-      password,
-      user.password
-    );
+    if (
+      user.role === "rider" &&
+      user.riderRequestStatus !== "Approved"
+    ) {
+      if (
+        user.riderRequestStatus ===
+        "Rejected"
+      ) {
+        return res.status(403).json({
+          success: false,
+          message:
+            user.riderRejectionReason ||
+            "Your rider request has been rejected",
+        });
+      }
+
+      return res.status(403).json({
+        success: false,
+        message:
+          "Your rider request is pending Super Admin approval.",
+      });
+    }
+
+    const isMatch =
+      await bcrypt.compare(
+        password,
+        user.password
+      );
 
     if (!isMatch) {
       return res.status(401).json({
         success: false,
-        message: "Invalid email or password",
+        message:
+          "Invalid email or password",
       });
     }
-
-    // =================================================
-    // JWT
-    // =================================================
 
     const token = jwt.sign(
       {
@@ -465,9 +615,11 @@ const login = async (req, res) => {
         email: user.email,
         phone: user.phone,
         role: user.role,
+        status: user.status,
+        riderRequestStatus:
+          user.riderRequestStatus,
       },
     });
-
   } catch (error) {
     console.error(
       "Login Error:",
@@ -481,24 +633,20 @@ const login = async (req, res) => {
   }
 };
 
-
 // =====================================================
 // VERIFY OTP
 // =====================================================
 
 const verifyOtp = async (req, res) => {
   try {
-    const { email, otp } = req.body;
+    const {
+      email,
+      otp,
+    } = req.body;
 
     console.log(
       "========== VERIFY OTP =========="
     );
-
-    // Do not log OTP values (security)
-
-    // =================================================
-    // VALIDATION
-    // =================================================
 
     if (!email || !otp) {
       return res.status(400).json({
@@ -507,10 +655,6 @@ const verifyOtp = async (req, res) => {
           "Email and OTP are required",
       });
     }
-
-    // =================================================
-    // FIND USER
-    // =================================================
 
     const user = await User.findOne({
       email: email.toLowerCase().trim(),
@@ -523,10 +667,6 @@ const verifyOtp = async (req, res) => {
       });
     }
 
-    // =================================================
-    // ALREADY VERIFIED
-    // =================================================
-
     if (user.isVerified) {
       return res.status(400).json({
         success: false,
@@ -534,10 +674,6 @@ const verifyOtp = async (req, res) => {
           "Email is already verified",
       });
     }
-
-    // =================================================
-    // OTP EXISTS
-    // =================================================
 
     if (
       !user.otp ||
@@ -550,10 +686,6 @@ const verifyOtp = async (req, res) => {
       });
     }
 
-    // =================================================
-    // OTP EXPIRY
-    // =================================================
-
     if (
       new Date() >
       new Date(user.otpExpire)
@@ -565,10 +697,6 @@ const verifyOtp = async (req, res) => {
       });
     }
 
-    // =================================================
-    // OTP MATCH
-    // =================================================
-
     if (
       user.otp.toString() !==
       otp.toString()
@@ -579,12 +707,7 @@ const verifyOtp = async (req, res) => {
       });
     }
 
-    // =================================================
-    // VERIFY USER
-    // =================================================
-
     user.isVerified = true;
-
     user.otp = null;
     user.otpExpire = null;
 
@@ -597,10 +720,12 @@ const verifyOtp = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message:
-        "Email verified successfully. Account created.",
-    });
 
+      message:
+        user.role === "rider"
+          ? "Email verified successfully. Your rider request is now pending Super Admin approval."
+          : "Email verified successfully. Account created.",
+    });
   } catch (error) {
     console.error(
       "Verify OTP Error:",
@@ -613,7 +738,6 @@ const verifyOtp = async (req, res) => {
     });
   }
 };
-
 
 // =====================================================
 // RESEND OTP
@@ -634,10 +758,6 @@ const resendOtp = async (req, res) => {
     const cleanEmail =
       email.toLowerCase().trim();
 
-    // =================================================
-    // FIND USER
-    // =================================================
-
     const user = await User.findOne({
       email: cleanEmail,
     });
@@ -649,10 +769,6 @@ const resendOtp = async (req, res) => {
       });
     }
 
-    // =================================================
-    // ALREADY VERIFIED
-    // =================================================
-
     if (user.isVerified) {
       return res.status(400).json({
         success: false,
@@ -661,23 +777,14 @@ const resendOtp = async (req, res) => {
       });
     }
 
-    // =================================================
-    // NEW OTP
-    // =================================================
-
     const otp = Math.floor(
       100000 +
-      Math.random() * 900000
+        Math.random() * 900000
     ).toString();
 
     const otpExpire = new Date(
-      Date.now() +
-      10 * 60 * 1000
+      Date.now() + 10 * 60 * 1000
     );
-
-    // =================================================
-    // SAVE OTP
-    // =================================================
 
     user.otp = otp;
     user.otpExpire = otpExpire;
@@ -685,90 +792,123 @@ const resendOtp = async (req, res) => {
     await user.save();
 
     // =================================================
-    // SEND EMAIL
+    // SEND RESEND OTP
     // =================================================
 
-    await sendEmail({
-      to: user.email,
+    let emailSent = false;
 
-      subject:
-        "Foodie - New Verification OTP",
+    try {
+      const emailResult = await sendEmail({
+        to: user.email,
 
-      html: `
-        <div style="
-          font-family: Arial, sans-serif;
-          max-width: 600px;
-          margin: auto;
-          padding: 30px;
-        ">
+        subject:
+          "Foodie - New Verification OTP",
 
-          <h2 style="color:#f97316;">
-            🍔 Foodie
-          </h2>
-
-          <h3>
-            Email Verification OTP
-          </h3>
-
-          <p>
-            Hello <strong>${user.name}</strong>,
-          </p>
-
-          <p>
-            Your new verification OTP is:
-          </p>
-
+        html: `
           <div style="
-            background:#fff7ed;
-            border:1px solid #fed7aa;
-            padding:20px;
-            text-align:center;
-            border-radius:10px;
-            margin:20px 0;
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: auto;
+            padding: 30px;
           ">
 
-            <span style="
-              font-size:32px;
-              font-weight:bold;
-              letter-spacing:8px;
-              color:#f97316;
+            <h2 style="color:#f97316;">
+              🍔 Foodie
+            </h2>
+
+            <h3>
+              Email Verification OTP
+            </h3>
+
+            <p>
+              Hello <strong>${user.name}</strong>,
+            </p>
+
+            <p>
+              Your new verification OTP is:
+            </p>
+
+            <div style="
+              background:#fff7ed;
+              border:1px solid #fed7aa;
+              padding:20px;
+              text-align:center;
+              border-radius:10px;
+              margin:20px 0;
             ">
-              ${otp}
-            </span>
+
+              <span style="
+                font-size:32px;
+                font-weight:bold;
+                letter-spacing:8px;
+                color:#f97316;
+              ">
+                ${otp}
+              </span>
+
+            </div>
+
+            <p>
+              This OTP is valid for
+              <strong>10 minutes</strong>.
+            </p>
+
+            <hr />
+
+            <small style="color:#999;">
+              © 2026 Foodie
+            </small>
 
           </div>
+        `,
 
-          <p>
-            This OTP is valid for
-            <strong>10 minutes</strong>.
-          </p>
+        otp,
+      });
 
-          <p>
-            If you did not request this OTP,
-            please ignore this email.
-          </p>
+      emailSent =
+        emailResult?.sent === true;
 
-          <hr />
+      if (emailSent) {
+        console.log(
+          "✅ NEW OTP SENT:",
+          user.email
+        );
+      }
+    } catch (emailError) {
+      console.error(
+        "❌ RESEND OTP EMAIL FAILED:",
+        emailError.response?.data ||
+          emailError.message
+      );
+    }
 
-          <small style="color:#999;">
-            © 2026 Foodie
-          </small>
+    // =================================================
+    // DEVELOPMENT RESEND OTP
+    // =================================================
 
-        </div>
-      `,
-    });
-
-    console.log(
-      "NEW OTP SENT:",
-      user.email
-    );
+    if (!emailSent) {
+      console.log("================================");
+      console.log(
+        "🚧 DEVELOPMENT RESEND OTP"
+      );
+      console.log(
+        "Email:",
+        user.email
+      );
+      console.log(
+        "OTP:",
+        otp
+      );
+      console.log("================================");
+    }
 
     return res.status(200).json({
       success: true,
-      message:
-        "New OTP sent successfully",
-    });
 
+      message: emailSent
+        ? "New OTP sent successfully"
+        : "New OTP generated. Check backend terminal.",
+    });
   } catch (error) {
     console.error(
       "Resend OTP Error:",
@@ -779,11 +919,9 @@ const resendOtp = async (req, res) => {
       success: false,
       message:
         "Unable to resend OTP",
-      error: error.message,
     });
   }
 };
-
 
 // =====================================================
 // EXPORTS

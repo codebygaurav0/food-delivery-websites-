@@ -1,17 +1,27 @@
 const axios = require("axios");
 
-const sendEmail = async ({ to, subject, html }) => {
+const sendEmail = async ({
+  to,
+  subject,
+  html,
+}) => {
   try {
     if (!process.env.BREVO_KEY) {
-      throw new Error("BREVO_KEY is missing in .env");
+      throw new Error(
+        "BREVO_KEY is missing in .env"
+      );
     }
 
     if (!process.env.BREVO_EMAIL) {
-      throw new Error("BREVO_EMAIL is missing in .env");
+      throw new Error(
+        "BREVO_EMAIL is missing in .env"
+      );
     }
 
     if (!to) {
-      throw new Error("Recipient email is required");
+      throw new Error(
+        "Recipient email is required"
+      );
     }
 
     const response = await axios.post(
@@ -21,32 +31,49 @@ const sendEmail = async ({ to, subject, html }) => {
           name: "Foodie",
           email: process.env.BREVO_EMAIL,
         },
+
         to: [
           {
             email: to,
           },
         ],
+
         subject,
+
         htmlContent: html,
       },
       {
         headers: {
           accept: "application/json",
-          "api-key": process.env.BREVO_KEY,
-          "content-type": "application/json",
+          "api-key":
+            process.env.BREVO_KEY,
+          "content-type":
+            "application/json",
         },
+
         timeout: 15000,
       }
     );
 
-    console.log("✅ Brevo Email Sent Successfully");
-    console.log("Message ID:", response.data.messageId);
+    console.log(
+      "✅ Brevo Email Sent Successfully"
+    );
 
-    return response.data;
+    console.log(
+      "Message ID:",
+      response.data.messageId
+    );
+
+    return {
+      success: true,
+      sent: true,
+      data: response.data,
+    };
   } catch (error) {
     console.error(
       "❌ Brevo Email Error:",
-      error.response?.data || error.message
+      error.response?.data ||
+        error.message
     );
 
     throw error;

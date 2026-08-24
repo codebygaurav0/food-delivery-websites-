@@ -6,12 +6,39 @@ const authMiddleware = require("../middleware/authMiddleware");
 const allowRoles = require("../middleware/roleMiddleware");
 
 const {
+  getDashboardStats,
+
+  // Restaurant
   getPendingRestaurants,
   approveRestaurant,
   rejectRestaurant,
+
+  // Rider
+  getPendingRiders,
+  approveRider,
+  rejectRider,
+
+  // Customer
+  getCustomers,
+
+  // Orders
+  getAdminOrders,
 } = require("../controllers/adminController");
 
-// ================= PENDING RESTAURANTS =================
+// =====================================================
+// SUPER ADMIN DASHBOARD
+// =====================================================
+
+router.get(
+  "/dashboard",
+  authMiddleware,
+  allowRoles("superAdmin"),
+  getDashboardStats
+);
+
+// =====================================================
+// PENDING RESTAURANTS
+// =====================================================
 
 router.get(
   "/restaurants/pending",
@@ -20,7 +47,9 @@ router.get(
   getPendingRestaurants
 );
 
-// ================= APPROVE =================
+// =====================================================
+// APPROVE RESTAURANT
+// =====================================================
 
 router.put(
   "/restaurants/:id/approve",
@@ -29,13 +58,70 @@ router.put(
   approveRestaurant
 );
 
-// ================= REJECT =================
+// =====================================================
+// REJECT RESTAURANT
+// =====================================================
 
 router.put(
   "/restaurants/:id/reject",
   authMiddleware,
   allowRoles("superAdmin"),
   rejectRestaurant
+);
+
+// =====================================================
+// RIDER REQUESTS
+// =====================================================
+
+router.get(
+  "/riders/pending",
+  authMiddleware,
+  allowRoles("superAdmin"),
+  getPendingRiders
+);
+
+// =====================================================
+// APPROVE RIDER
+// =====================================================
+
+router.put(
+  "/riders/:id/approve",
+  authMiddleware,
+  allowRoles("superAdmin"),
+  approveRider
+);
+
+// =====================================================
+// REJECT RIDER
+// =====================================================
+
+router.put(
+  "/riders/:id/reject",
+  authMiddleware,
+  allowRoles("superAdmin"),
+  rejectRider
+);
+
+// =====================================================
+// CUSTOMERS
+// =====================================================
+
+router.get(
+  "/customers",
+  authMiddleware,
+  allowRoles("superAdmin"),
+  getCustomers
+);
+
+// =====================================================
+// ALL ORDERS
+// =====================================================
+
+router.get(
+  "/orders",
+  authMiddleware,
+  allowRoles("superAdmin"),
+  getAdminOrders
 );
 
 module.exports = router;

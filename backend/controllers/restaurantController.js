@@ -1,8 +1,13 @@
 const mongoose = require("mongoose");
+
 const Restaurant = require("../models/RestaurantModel");
 const User = require("../models/UserModel");
 const Food = require("../models/FoodModel");
-// ================= REGISTER RESTAURANT =================
+
+// =====================================================
+// REGISTER RESTAURANT
+// =====================================================
+
 const registerRestaurant = async (req, res) => {
   try {
     const {
@@ -12,9 +17,14 @@ const registerRestaurant = async (req, res) => {
       address,
       city,
       state,
+      latitude,
+      longitude,
     } = req.body;
 
-    // Required fields
+    // =================================================
+    // REQUIRED FIELDS
+    // =================================================
+
     if (
       !restaurantName ||
       !email ||
@@ -29,8 +39,44 @@ const registerRestaurant = async (req, res) => {
       });
     }
 
-    // Check logged-in user
-    const owner = await User.findById(req.user.userId);
+    // =================================================
+    // VALIDATE COORDINATES
+    // =================================================
+
+    const restaurantLatitude = Number(latitude);
+    const restaurantLongitude = Number(longitude);
+
+    if (
+      !Number.isFinite(restaurantLatitude) ||
+      !Number.isFinite(restaurantLongitude)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Restaurant latitude and longitude are required",
+      });
+    }
+
+    if (
+      restaurantLatitude < -90 ||
+      restaurantLatitude > 90 ||
+      restaurantLongitude < -180 ||
+      restaurantLongitude > 180
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Invalid restaurant latitude or longitude",
+      });
+    }
+
+    // =================================================
+    // CHECK LOGGED-IN USER
+    // =================================================
+
+    const owner = await User.findById(
+      req.user.userId
+    );
 
     if (!owner) {
       return res.status(404).json({
@@ -39,7 +85,10 @@ const registerRestaurant = async (req, res) => {
       });
     }
 
-    // Restaurant owner check
+    // =================================================
+    // RESTAURANT OWNER CHECK
+    // =================================================
+
     if (owner.role !== "restaurantOwner") {
       return res.status(403).json({
         success: false,
@@ -48,7 +97,10 @@ const registerRestaurant = async (req, res) => {
       });
     }
 
-    // Check existing restaurant
+    // =================================================
+    // CHECK EXISTING RESTAURANT
+    // =================================================
+
     const existingRestaurant =
       await Restaurant.findOne({
         owner: owner._id,
@@ -61,21 +113,44 @@ const registerRestaurant = async (req, res) => {
       });
     }
 
-    // Create restaurant
+    // =================================================
+    // CREATE RESTAURANT
+    // =================================================
+
     const restaurant = await Restaurant.create({
       owner: owner._id,
-      restaurantName,
-      email,
-      phone,
-      address,
-      city,
-      state,
+
+      restaurantName:
+        restaurantName.trim(),
+
+      email: email.trim(),
+
+      phone: phone.trim(),
+
+      address: address.trim(),
+
+      city: city.trim(),
+
+      state: state.trim(),
+
+      // Restaurant pickup location
+      latitude: restaurantLatitude,
+      longitude: restaurantLongitude,
+
+      status: "Pending",
+
+      rejectionReason: "",
     });
 
-    res.status(201).json({
+    // =================================================
+    // RESPONSE
+    // =================================================
+
+    return res.status(201).json({
       success: true,
       message:
         "Restaurant registration submitted successfully",
+
       restaurant,
     });
   } catch (error) {
@@ -84,7 +159,7 @@ const registerRestaurant = async (req, res) => {
       error
     );
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "Server error",
       error: error.message,
@@ -92,14 +167,20 @@ const registerRestaurant = async (req, res) => {
   }
 };
 
-// ================= GET ALL RESTAURANTS =================
+// =====================================================
+// GET ALL APPROVED RESTAURANTS
+// =====================================================
+
 const getAllRestaurants = async (req, res) => {
   try {
-    const restaurants = await Restaurant.find({
-      status: "Approved",
-    }).sort({ createdAt: -1 });
+    const restaurants =
+      await Restaurant.find({
+        status: "Approved",
+      }).sort({
+        createdAt: -1,
+      });
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       count: restaurants.length,
       restaurants,
@@ -110,26 +191,37 @@ const getAllRestaurants = async (req, res) => {
       error
     );
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
-      message: "Unable to fetch restaurants",
+      message:
+        "Unable to fetch restaurants",
       error: error.message,
     });
   }
 };
 
+// =====================================================
+// GET MY RESTAURANT
+// =====================================================
+
 const getMyRestaurant = async (req, res) => {
   try {
-    if (!mongoose.isValidObjectId(req.user.userId)) {
+    if (
+      !mongoose.isValidObjectId(
+        req.user.userId
+      )
+    ) {
       return res.status(401).json({
         success: false,
-        message: "Authenticated user is invalid",
+        message:
+          "Authenticated user is invalid",
       });
     }
 
-    const restaurant = await Restaurant.findOne({
-      owner: req.user.userId,
-    });
+    const restaurant =
+      await Restaurant.findOne({
+        owner: req.user.userId,
+      });
 
     if (!restaurant) {
       return res.status(404).json({
@@ -138,33 +230,48 @@ const getMyRestaurant = async (req, res) => {
       });
     }
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
-      message: "Restaurant loaded successfully",
+      message:
+        "Restaurant loaded successfully",
       restaurant,
     });
   } catch (error) {
-    console.error("Get My Restaurant Error:", error);
+    console.error(
+      "Get My Restaurant Error:",
+      error
+    );
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
-      message: "Unable to load restaurant",
+      message:
+        "Unable to load restaurant",
     });
   }
 };
-// ================= GET RESTAURANT MENU =================
 
-const getRestaurantMenu = async (req, res) => {
+// =====================================================
+// GET RESTAURANT MENU
+// =====================================================
+
+const getRestaurantMenu = async (
+  req,
+  res
+) => {
   try {
-    const { restaurantId } = req.params;
+    const { restaurantId } =
+      req.params;
 
     const restaurant =
-      await Restaurant.findById(restaurantId);
+      await Restaurant.findById(
+        restaurantId
+      );
 
     if (!restaurant) {
       return res.status(404).json({
         success: false,
-        message: "Restaurant not found",
+        message:
+          "Restaurant not found",
       });
     }
 
@@ -175,7 +282,7 @@ const getRestaurantMenu = async (req, res) => {
       createdAt: -1,
     });
 
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       restaurant,
       foods,
@@ -186,14 +293,19 @@ const getRestaurantMenu = async (req, res) => {
       error
     );
 
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
-      message: "Unable to load restaurant menu",
+      message:
+        "Unable to load restaurant menu",
       error: error.message,
     });
   }
 };
-// ================= EXPORTS =================
+
+// =====================================================
+// EXPORTS
+// =====================================================
+
 module.exports = {
   registerRestaurant,
   getAllRestaurants,
