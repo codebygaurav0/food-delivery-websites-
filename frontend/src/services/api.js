@@ -1,20 +1,62 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:5000",
+  baseURL:
+    import.meta.env.VITE_API_URL ||
+    "https://food-delivery-websites-wo3m.onrender.com",
+
   headers: {
     "Content-Type": "application/json",
   },
 });
 
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
+// =====================================================
+// AUTH TOKEN
+// =====================================================
 
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+api.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("token");
+
+    console.log(
+      "API Request:",
+      config.method?.toUpperCase(),
+      config.url
+    );
+
+    console.log(
+      "Token exists:",
+      Boolean(token)
+    );
+
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
   }
+);
 
-  return config;
-});
+// =====================================================
+// RESPONSE ERROR
+// =====================================================
+
+api.interceptors.response.use(
+  (response) => {
+    return response;
+  },
+  (error) => {
+    console.error(
+      "API Error:",
+      error.response?.status,
+      error.response?.data
+    );
+
+    return Promise.reject(error);
+  }
+);
 
 export default api;

@@ -6,7 +6,11 @@ function VerifyOtp() {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Email signup page se aayega
   const email = location.state?.email || "";
+
+  // Rider / customer / restaurantOwner
+  const role = location.state?.role || "customer";
 
   const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
@@ -15,7 +19,9 @@ function VerifyOtp() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  // ================= VERIFY OTP =================
+  // =====================================================
+  // VERIFY OTP
+  // =====================================================
 
   const handleVerify = async (e) => {
     e.preventDefault();
@@ -23,40 +29,73 @@ function VerifyOtp() {
     setError("");
     setSuccess("");
 
+    console.log("========== VERIFY OTP ==========");
+    console.log("Email:", email);
+    console.log("OTP:", otp);
+    console.log("Role:", role);
+
+    // Email check
     if (!email) {
-      setError("Email not found. Please signup again.");
+      setError(
+        "Email not found. Please signup again."
+      );
       return;
     }
 
-    if (otp.length !== 6) {
-      setError("Please enter a valid 6 digit OTP.");
+    // OTP check
+    if (!otp || otp.length !== 6) {
+      setError(
+        "Please enter a valid 6 digit OTP."
+      );
       return;
     }
-
-    setLoading(true);
 
     try {
+      setLoading(true);
+
+      // IMPORTANT:
+      // Backend route:
+      // POST /user/signup/verify-otp
+
       const response = await api.post(
         "/user/signup/verify-otp",
         {
-          email,
-          otp,
+          email: email.trim(),
+          otp: otp.trim(),
         }
       );
 
-      if (response.data.success) {
+      console.log(
+        "VERIFY RESPONSE:",
+        response.data
+      );
+
+      if (response.data?.success) {
         setSuccess(
-          "Email verified successfully! Account created."
+          role === "rider"
+            ? "Email verified successfully! Your rider request is now pending Super Admin approval."
+            : "Email verified successfully! Account created."
         );
 
+        // Login page par redirect
         setTimeout(() => {
           navigate("/login");
         }, 1500);
+      } else {
+        setError(
+          response.data?.message ||
+            "Unable to verify OTP."
+        );
       }
     } catch (error) {
       console.error(
         "OTP Verification Error:",
         error
+      );
+
+      console.error(
+        "Server Response:",
+        error.response?.data
       );
 
       setError(
@@ -68,11 +107,16 @@ function VerifyOtp() {
     }
   };
 
-  // ================= RESEND OTP =================
+  // =====================================================
+  // RESEND OTP
+  // =====================================================
 
   const handleResend = async () => {
     setError("");
     setSuccess("");
+
+    console.log("========== RESEND OTP ==========");
+    console.log("Email:", email);
 
     if (!email) {
       setError(
@@ -81,27 +125,47 @@ function VerifyOtp() {
       return;
     }
 
-    setResending(true);
-
     try {
+      setResending(true);
+
+      // IMPORTANT:
+      // Backend route:
+      // POST /user/signup/resend-otp
+
       const response = await api.post(
         "/user/signup/resend-otp",
         {
-          email,
+          email: email.trim(),
         }
       );
 
-      if (response.data.success) {
-        setSuccess(
-          "New OTP has been sent to your email."
-        );
+      console.log(
+        "RESEND RESPONSE:",
+        response.data
+      );
 
+      if (response.data?.success) {
         setOtp("");
+
+        setSuccess(
+          response.data?.message ||
+            "New OTP has been sent successfully."
+        );
+      } else {
+        setError(
+          response.data?.message ||
+            "Unable to resend OTP."
+        );
       }
     } catch (error) {
       console.error(
         "Resend OTP Error:",
         error
+      );
+
+      console.error(
+        "Server Response:",
+        error.response?.data
       );
 
       setError(
@@ -112,6 +176,30 @@ function VerifyOtp() {
       setResending(false);
     }
   };
+
+  // =====================================================
+  // OTP INPUT
+  // =====================================================
+
+  const handleOtpChange = (e) => {
+    const value = e.target.value
+      .replace(/\D/g, "")
+      .slice(0, 6);
+
+    setOtp(value);
+
+    if (error) {
+      setError("");
+    }
+
+    if (success) {
+      setSuccess("");
+    }
+  };
+
+  // =====================================================
+  // RETURN UI
+  // =====================================================
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-orange-100 flex items-center justify-center px-4 py-8">
@@ -144,7 +232,7 @@ function VerifyOtp() {
 
         <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-8">
 
-          {/* ERROR */}
+          {/* ================= ERROR ================= */}
 
           {error && (
             <div className="mb-5 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-600">
@@ -152,7 +240,7 @@ function VerifyOtp() {
             </div>
           )}
 
-          {/* SUCCESS */}
+          {/* ================= SUCCESS ================= */}
 
           {success && (
             <div className="mb-5 rounded-lg bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-600">
@@ -178,36 +266,30 @@ function VerifyOtp() {
 
               <input
                 id="otp"
+                name="otp"
                 type="text"
                 inputMode="numeric"
                 autoComplete="one-time-code"
                 maxLength={6}
                 value={otp}
-                onChange={(e) => {
-                  const value =
-                    e.target.value.replace(
-                      /\D/g,
-                      ""
-                    );
-
-                  setOtp(value);
-                }}
+                onChange={handleOtpChange}
                 placeholder="Enter 6 digit OTP"
-                className="w-full px-4 py-4 rounded-xl border border-gray-300 outline-none text-center text-2xl font-bold tracking-[0.5em] focus:border-orange-500 focus:ring-2 focus:ring-orange-100"
+                disabled={loading}
+                className="w-full px-4 py-4 rounded-xl border border-gray-300 outline-none text-center text-2xl font-bold tracking-[0.5em] focus:border-orange-500 focus:ring-2 focus:ring-orange-100 disabled:bg-gray-100"
               />
+
+              <p className="text-xs text-gray-400 text-center mt-2">
+                Enter the 6 digit OTP received on your email.
+              </p>
 
             </div>
 
-            {/* VERIFY BUTTON */}
+            {/* ================= VERIFY BUTTON ================= */}
 
             <button
               type="submit"
-              disabled={
-                loading ||
-                otp.length !== 6 ||
-                !email
-              }
-              className="w-full bg-orange-500 hover:bg-orange-600 disabled:bg-orange-300 text-white font-semibold py-3.5 rounded-xl transition duration-200 shadow-md"
+              disabled={loading}
+              className="w-full bg-orange-500 hover:bg-orange-600 disabled:bg-orange-300 disabled:cursor-not-allowed text-white font-semibold py-3.5 rounded-xl transition duration-200 shadow-md"
             >
               {loading
                 ? "Verifying..."
@@ -227,10 +309,8 @@ function VerifyOtp() {
             <button
               type="button"
               onClick={handleResend}
-              disabled={
-                resending || !email
-              }
-              className="mt-2 font-semibold text-orange-500 hover:text-orange-600 disabled:text-orange-300"
+              disabled={resending || loading}
+              className="mt-2 font-semibold text-orange-500 hover:text-orange-600 disabled:text-orange-300 disabled:cursor-not-allowed"
             >
               {resending
                 ? "Sending..."
@@ -244,7 +324,11 @@ function VerifyOtp() {
           <div className="mt-6 pt-5 border-t border-gray-100 text-center">
 
             <Link
-              to="/signup"
+              to={
+                role === "rider"
+                  ? "/rider/signup"
+                  : "/signup"
+              }
               className="text-sm font-semibold text-gray-500 hover:text-orange-500"
             >
               ← Back to Signup

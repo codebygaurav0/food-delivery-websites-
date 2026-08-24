@@ -20,6 +20,14 @@ import RestaurantOwnerSignup from "./pages/restaurant/RestaurantOwnerSignup";
 // ================= ADMIN =================
 import AdminDashboard from "./pages/admin/Dashboard";
 
+// ================= RIDER =================
+import RiderSignup from "./pages/rider/Signup";
+import RiderDashboard from "./pages/rider/Dashboard";
+import AvailableOrders from "./pages/rider/AvailableOrders";
+import MyDeliveries from "./pages/rider/MyDeliveries";
+import RiderEarnings from "./pages/rider/Earnings";
+import RiderProfile from "./pages/rider/Profile";
+
 // ================= PROTECTED ROUTE =================
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -54,26 +62,57 @@ function App() {
           element={<VerifyOtp />}
         />
 
+        {/* ================= RESTAURANT MENU ================= */}
+
         <Route
           path="/restaurant/:restaurantId"
           element={<RestaurantMenu />}
         />
 
+        {/* =====================================================
+            CUSTOMER CART
+        ===================================================== */}
+
         <Route
           path="/cart"
-          element={<Cart />}
+          element={
+            <ProtectedRoute
+              roles={["customer", "user"]}
+            >
+              <Cart />
+            </ProtectedRoute>
+          }
         />
+
+        {/* =====================================================
+            CUSTOMER CHECKOUT
+        ===================================================== */}
 
         <Route
           path="/checkout"
-          element={<Checkout />}
+          element={
+            <ProtectedRoute
+              roles={["customer", "user"]}
+            >
+              <Checkout />
+            </ProtectedRoute>
+          }
         />
+
+        {/* =====================================================
+            CUSTOMER ORDERS
+        ===================================================== */}
 
         <Route
           path="/orders"
-          element={<MyOrders />}
+          element={
+            <ProtectedRoute
+              roles={["customer", "user"]}
+            >
+              <MyOrders />
+            </ProtectedRoute>
+          }
         />
-
 
         {/* =====================================================
             RESTAURANT OWNER SIGNUP
@@ -84,50 +123,68 @@ function App() {
           element={<RestaurantOwnerSignup />}
         />
 
-
         {/* =====================================================
-            RESTAURANT OWNER
+            RESTAURANT OWNER DASHBOARD
         ===================================================== */}
 
         <Route
           path="/restaurant/dashboard"
           element={
-            <ProtectedRoute roles={["restaurantOwner"]}>
+            <ProtectedRoute
+              roles={["restaurantOwner"]}
+            >
               <RestaurantDashboard />
             </ProtectedRoute>
           }
         />
 
+        {/* =====================================================
+            RESTAURANT REGISTER
+        ===================================================== */}
+
         <Route
           path="/restaurant/register"
           element={
-            <ProtectedRoute roles={["restaurantOwner"]}>
+            <ProtectedRoute
+              roles={["restaurantOwner"]}
+            >
               <RegisterRestaurant />
             </ProtectedRoute>
           }
         />
 
+        {/* =====================================================
+            RESTAURANT FOODS
+        ===================================================== */}
+
         <Route
           path="/restaurant/foods"
           element={
-            <ProtectedRoute roles={["restaurantOwner"]}>
+            <ProtectedRoute
+              roles={["restaurantOwner"]}
+            >
               <RestaurantFoods />
             </ProtectedRoute>
           }
         />
 
+        {/* =====================================================
+            RESTAURANT ORDERS
+        ===================================================== */}
+
         <Route
           path="/restaurant/orders"
           element={
-            <ProtectedRoute roles={["restaurantOwner"]}>
+            <ProtectedRoute
+              roles={["restaurantOwner"]}
+            >
               <RestaurantOrders />
             </ProtectedRoute>
           }
         />
 
-
         {/* =====================================================
-            SUPER ADMIN
+            ADMIN
         ===================================================== */}
 
         <Route
@@ -141,6 +198,89 @@ function App() {
           }
         />
 
+        {/* =====================================================
+            RIDER SIGNUP
+        ===================================================== */}
+
+        <Route
+          path="/rider/signup"
+          element={<RiderSignup />}
+        />
+
+        {/* =====================================================
+            RIDER DASHBOARD
+        ===================================================== */}
+
+        <Route
+          path="/rider/dashboard"
+          element={
+            <ProtectedRoute
+              roles={["rider"]}
+            >
+              <RiderDashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* =====================================================
+            RIDER AVAILABLE ORDERS
+        ===================================================== */}
+
+        <Route
+          path="/rider/available-orders"
+          element={
+            <ProtectedRoute
+              roles={["rider"]}
+            >
+              <AvailableOrders />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* =====================================================
+            RIDER MY DELIVERIES
+        ===================================================== */}
+
+        <Route
+          path="/rider/deliveries"
+          element={
+            <ProtectedRoute
+              roles={["rider"]}
+            >
+              <MyDeliveries />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* =====================================================
+            RIDER EARNINGS
+        ===================================================== */}
+
+        <Route
+          path="/rider/earnings"
+          element={
+            <ProtectedRoute
+              roles={["rider"]}
+            >
+              <RiderEarnings />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* =====================================================
+            RIDER PROFILE
+        ===================================================== */}
+
+        <Route
+          path="/rider/profile"
+          element={
+            <ProtectedRoute
+              roles={["rider"]}
+            >
+              <RiderProfile />
+            </ProtectedRoute>
+          }
+        />
 
         {/* =====================================================
             UNAUTHORIZED
@@ -149,10 +289,10 @@ function App() {
         <Route
           path="/unauthorized"
           element={
-            <div className="min-h-screen flex items-center justify-center p-10 text-center bg-gray-50">
-              <div>
+            <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+              <div className="bg-white border border-gray-200 rounded-2xl shadow-sm p-10 text-center max-w-md w-full">
 
-                <div className="text-6xl mb-4">
+                <div className="text-6xl mb-5">
                   🚫
                 </div>
 
@@ -163,6 +303,26 @@ function App() {
                 <p className="text-gray-500 mt-2">
                   You are not authorized to view this page.
                 </p>
+
+                <div className="flex justify-center gap-3 mt-6">
+
+                  <button
+                    onClick={() => window.history.back()}
+                    className="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-semibold transition"
+                  >
+                    Go Back
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      window.location.href = "/";
+                    }}
+                    className="px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-semibold transition"
+                  >
+                    Home
+                  </button>
+
+                </div>
 
               </div>
             </div>
@@ -176,20 +336,29 @@ function App() {
         <Route
           path="*"
           element={
-            <div className="min-h-screen flex items-center justify-center bg-gray-50">
+            <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
               <div className="text-center">
 
                 <div className="text-6xl mb-4">
                   🔍
                 </div>
 
-                <h1 className="text-3xl font-bold text-gray-900">
+                <h1 className="text-4xl font-bold text-gray-900">
                   404
                 </h1>
 
                 <p className="text-gray-500 mt-2">
                   Page not found.
                 </p>
+
+                <button
+                  onClick={() => {
+                    window.location.href = "/";
+                  }}
+                  className="mt-6 px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-semibold transition"
+                >
+                  Go Home
+                </button>
 
               </div>
             </div>

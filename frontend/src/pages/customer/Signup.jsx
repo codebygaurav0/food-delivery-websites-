@@ -494,7 +494,20 @@ function Signup() {
             >
               Login
             </Link>
+
+                   <div className="mt-6 text-center text-sm text-[#8A7461]">
+           Register as a delivery partner and start delivering with Foodie.?{" "}
+            <Link
+              to="/rider/signup"
+              className="font-bold text-[#D93425] hover:text-[#B32418] transition-colors"
+            >
+             Create Rider Account
+            </Link>
+
+            
           </div>
+          </div>
+          
         </div>
 
         {/* ================= FOOTER ================= */}
