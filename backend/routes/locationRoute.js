@@ -1,0 +1,9 @@
+const express = require("express");
+
+const { reverseGeocode } = require("../controllers/locationController");
+
+const router = express.Router();
+
+router.get("/reverse-geocode", reverseGeocode);
+
+module.exports = router;

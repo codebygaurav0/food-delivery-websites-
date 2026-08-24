@@ -1,0 +1,14 @@
+@"
+node_modules/
+.env
+.env.*
+!.env.example
+
+dist/
+build/
+*.log
+
+bad-body.json
+resend-body.json
+signup-body.json
+"@ | Set-Content .gitignore
