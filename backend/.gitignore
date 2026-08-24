@@ -11,4 +11,7 @@ build/
 bad-body.json
 resend-body.json
 signup-body.json
+
+frontend/.env
+frontend/src/services/.env
 "@ | Set-Content .gitignore
