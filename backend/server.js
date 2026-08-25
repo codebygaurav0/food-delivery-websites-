@@ -53,15 +53,21 @@ connectDB();
 // =====================================================
 
 const allowedOrigins = [
+  // Local development
   "http://localhost:5173",
   "http://localhost:3000",
+
+  // Current Vercel frontend
+  "https://frontend-bay-zeta-22.vercel.app",
+
+  // Previous Vercel deployments
   "https://food-delivery-frontend-iota-woad.vercel.app",
   "https://food-delivery-frontend-git-main-gauravs-projects-566748a5.vercel.app",
   "https://food-delivery-frontend-m4govpwh5-gauravs-projects-566748a5.vercel.app",
 ];
 
 // =====================================================
-// MIDDLEWARE
+// CORS MIDDLEWARE
 // =====================================================
 
 app.use(
@@ -78,7 +84,7 @@ app.use(
       }
 
       console.log(
-        "CORS blocked origin:",
+        "CORS BLOCKED ORIGIN:",
         origin
       );
 
