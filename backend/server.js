@@ -57,10 +57,10 @@ const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:3000",
 
-  // CURRENT VERCEL FRONTEND
-  "https://frontend-1oyhqe6i1-gauravs-projects-566748a5.vercel.app",
+  // Current Vercel frontend
+  "https://frontend-iota-vert-62.vercel.app",
 
-  // Other Vercel frontend deployments
+  // Previous Vercel deployments
   "https://frontend-bay-zeta-22.vercel.app",
   "https://food-delivery-frontend-iota-woad.vercel.app",
   "https://food-delivery-frontend-git-main-gauravs-projects-566748a5.vercel.app",
