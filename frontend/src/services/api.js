@@ -10,9 +10,7 @@ const api = axios.create({
   },
 });
 
-// =====================================================
-// AUTH TOKEN
-// =====================================================
+// ================= AUTH TOKEN =================
 
 api.interceptors.request.use(
   (config) => {
@@ -21,13 +19,10 @@ api.interceptors.request.use(
     console.log(
       "API Request:",
       config.method?.toUpperCase(),
-      config.url
+      `${config.baseURL}${config.url}`
     );
 
-    console.log(
-      "Token exists:",
-      Boolean(token)
-    );
+    console.log("Token exists:", Boolean(token));
 
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -35,19 +30,14 @@ api.interceptors.request.use(
 
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
-// =====================================================
-// RESPONSE ERROR
-// =====================================================
+// ================= RESPONSE ERROR =================
 
 api.interceptors.response.use(
-  (response) => {
-    return response;
-  },
+  (response) => response,
+
   (error) => {
     console.error(
       "API Error:",
