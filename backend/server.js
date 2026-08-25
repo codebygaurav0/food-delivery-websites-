@@ -57,10 +57,11 @@ const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:3000",
 
-  // Current Vercel frontend
-  "https://frontend-bay-zeta-22.vercel.app",
+  // CURRENT VERCEL FRONTEND
+  "https://frontend-1oyhqe6i1-gauravs-projects-566748a5.vercel.app",
 
-  // Previous Vercel deployments
+  // Other Vercel frontend deployments
+  "https://frontend-bay-zeta-22.vercel.app",
   "https://food-delivery-frontend-iota-woad.vercel.app",
   "https://food-delivery-frontend-git-main-gauravs-projects-566748a5.vercel.app",
   "https://food-delivery-frontend-m4govpwh5-gauravs-projects-566748a5.vercel.app",
@@ -79,6 +80,7 @@ app.use(
         return callback(null, true);
       }
 
+      // Allow registered frontend origins
       if (allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
@@ -108,6 +110,8 @@ app.use(
       "Content-Type",
       "Authorization",
     ],
+
+    optionsSuccessStatus: 204,
   })
 );
 
